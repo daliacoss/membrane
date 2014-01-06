@@ -6,16 +6,6 @@ static void joyEvent(u16 joy, u16 changed, u16 state);
 void playMusic();
 
 static void joyEvent(u16 joy, u16 changed, u16 state){
-
-	// char debug[20];
-	// uintToStr((u32) joy, debug, 1);
-	// VDP_drawText(debug, 2, 20);
-
-	// // must be bitwise AND - maybe because it's u16?
-	// if (joy == 0){
-	// 	if (changed & BUTTON_START & state) playMusic();
-	// }
-
 	Instrument_joyEvent(joy, changed, state);
 }
 
@@ -47,6 +37,7 @@ int main(){
 
 	VDP_drawText("hello gumersindo", 2, 2);
 
+	Instrument_init();
 	//main loop
 	while(1)
 	{
