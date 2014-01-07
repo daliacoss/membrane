@@ -32,16 +32,16 @@ int main(){
 	JOY_init();
 	JOY_setEventHandler(&joyEvent);
 	PSG_init();
+	Instrument_init();
 
 	//VDP_setTileMap(APLAN, TILE_ATTR_FULL(PAL1, 1, 1, 1, 1), 5, 5);
 
-	VDP_drawText("hello gumersindo", 2, 2);
+	VDP_drawText("hello dingo", 2, 2);
 
-	Instrument_init();
 	//main loop
 	while(1)
 	{
-
+		Instrument_update();
 		VDP_waitVSync();
 	}
 

@@ -1,6 +1,6 @@
 #include "Instrument.h"
 
-const u16 PITCHES[] = {
+const u16 PITCHES[] = {0,
 	16, 17, 18, 19, 21, 22, 23, 25, 26, 28, 29, 31,
 	33, 35, 37, 39, 41, 44, 46, 49, 52, 55, 58, 62,
 	66, 70, 74, 78, 83, 87, 93, 98, 104, 110, 117, 124,
@@ -12,23 +12,44 @@ const u16 PITCHES[] = {
 };
 const u16 LEN_PITCHES = sizeof(PITCHES) / sizeof(PITCHES[0]);
 const u16 SCALE_MAJ[] = {0,2,4,5,7,9,11,12};
-u8 sustain[4] = {0,0,0,0};
+u16 currentPitchIndex[4] = {0,0,0,0};
+u8 sustainOn[4] = {0,0,0,0};
 u16 scale[4][8];
+u8 vibratoOn[4] = {1,0,0,0};
+s16 vibratoY[4] = {0,0,0,0};
+u16 vibratoX[4] = {0,0,0,0};
+u16 vibratoDepth[4] = {5,20,20,20};
+u16 vibratoSpeed[4] = {60,80,80,80};
 
 void Instrument_init(){
 	int i,j;
-	for(i=0; i<4; i++){
+	for(i=0; i<3; i++){
+		//replace 2 with envelope[i]
+		PSG_setEnvelope(i, 2);
 		for (j=0; j<8; j++){
 			scale[i][j] = SCALE_MAJ[j];		
 		}
 	}
 }
 
+void Instrument_update(){
+	int i;
+	//for each channel
+	for (i=0; i<3; i++){
+		updateVibrato(i);
+		Instrument_playNote(i);
+	}
+	char debugLog[20];
+	intToStr(vibratoY[0], debugLog, 1);
+	VDP_clearText(2, 20, 20);
+	VDP_drawText(debugLog, 2, 20);
+}
+
 void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 	if (changed){
 		u8 channel = (joy>0) ? 1 : 0;
 		s8 pitchMod = 0;
-		static s8 pitchModAbs = 1;
+		static u8 pitchModAbs = 1;
 
 		u8 bA = (BUTTON_A & state);
 		u8 bB = (BUTTON_B & state);
@@ -38,8 +59,8 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		if (BUTTON_Y & state & changed){
 			//if start is pressed, y button changes modulation depth
 			if (BUTTON_START & state) pitchModAbs = (pitchModAbs==1) ? OCT : 1;
-			//if start not pressed, y button toggles sustain
-			else sustain[channel] = ! (sustain[channel]);
+			//if start not pressed, y button toggles sustainOn
+			else sustainOn[channel] = ! (sustainOn[channel]);
 		}
 		if (BUTTON_UP & state){
 			pitchMod = pitchModAbs;
@@ -51,34 +72,58 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		//play
 		//if any button is pressed and right is held, note will play
 		if (BUTTON_RIGHT & state){
-			u16 freq = buttonsToFreq(channel, bA, bB, bC, pitchMod+(4 * OCT));
-			Instrument_playNote(channel, freq, 2);
+			setCPI(channel, scale[channel][buttonsToScalePitch(bA, bB, bC)], pitchMod);
 		}
 		else if (BUTTON_LEFT & state) Instrument_stopNote(channel);
-		else if (!sustain[channel]) Instrument_stopNote(channel);
+		else if (!sustainOn[channel]) Instrument_stopNote(channel);
 	}
 }
 
-void Instrument_playNote(u8 channel, u16 frequency, u8 envelope){
-	PSG_setEnvelope(channel, envelope);
-	PSG_setFrequency(channel, frequency);
+void Instrument_playNote(u8 channel){
+	u16 freq = PITCHES[currentPitchIndex[channel]];
+	if (freq && vibratoOn[channel]){
+		freq += vibratoY[channel] - vibratoDepth[channel];
+	}
+	PSG_setFrequency(channel, freq);
 }
 
 void Instrument_stopNote(u8 channel){
-	PSG_setFrequency(channel, 0);
+	currentPitchIndex[channel] = 0;
+	//this part is not strictly necessary as playNote is called in update
+	Instrument_playNote(channel);
 }
 
-/* get pitch from button combination using binary fingering
+/* get unmodified pitch from button combination using binary fingering
 (bC is lowest significant bit) */
-static u16 buttonsToFreq(u8 channel, u8 bA, u8 bB, u8 bC, s16 modifier){
-
+static u8 buttonsToScalePitch(u8 bA, u8 bB, u8 bC){
 	bA = (bA>0) ? 1 : 0;
-	bB = (bB>0) ? 1 : 0;
-	bC = (bC>0) ? 1 : 0;
+ 	bB = (bB>0) ? 1 : 0;
+  	bC = (bC>0) ? 1 : 0;
 
-	u16 index = scale[channel][bA*4 + bB*2 + bC] + modifier;
+  	return bA*4 + bB*2 + bC;
+}
 
-	return PITCHES[(u16) clamp(index, 0, LEN_PITCHES)];
+static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod){
+	//replace 4 with currentOctave[channel]
+	//+1 is neccessary as the first element of PITCHES is 0 Hz
+	currentPitchIndex[channel] = 1 + scalePitch + pitchMod + (4 * OCT);
+}
+
+static void updateVibrato(u8 i){
+	fix16 fVibY;
+	if (vibratoOn[i]){
+		//calculate amplitude from sine of vibratoX
+		fVibY = sinFix16(vibratoX[i]);
+		//convert amplitude to u16 fraction of vibratoDepth
+		vibratoY[i] = fix16ToInt(fix16Mul(fVibY, intToFix16(vibratoDepth[i])));
+
+		//increment vibratoX
+		vibratoX[i] += vibratoSpeed[i];
+		if (vibratoX[i] > 512) vibratoX[i] = 0;
+	}
+	else{
+		vibratoY[i] = 0;
+	}
 }
 
 static u32 clamp(u32 n, u32 min, u32 max){
