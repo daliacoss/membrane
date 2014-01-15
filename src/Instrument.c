@@ -39,10 +39,10 @@ void Instrument_update(){
 		updateVibrato(i);
 		Instrument_playNote(i);
 	}
-	char debugLog[20];
+	/*char debugLog[20];
 	intToStr(vibratoY[0], debugLog, 1);
 	VDP_clearText(2, 20, 20);
-	VDP_drawText(debugLog, 2, 20);
+	VDP_drawText(debugLog, 2, 20);*/
 }
 
 void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
@@ -56,6 +56,9 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		u8 bC = (BUTTON_C & state);
 
 		//control
+		if (BUTTON_X & state & changed){
+			vibratoOn[channel] = ! (vibratoOn[channel]);
+		}
 		if (BUTTON_Y & state & changed){
 			//if start is pressed, y button changes modulation depth
 			if (BUTTON_START & state) pitchModAbs = (pitchModAbs==1) ? OCT : 1;
