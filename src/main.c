@@ -36,7 +36,7 @@ int main(){
 
 	//VDP_setTileMap(APLAN, TILE_ATTR_FULL(PAL1, 1, 1, 1, 1), 5, 5);
 
-	VDP_drawText("hello dingo", 2, 2);
+	VDP_drawText("hello dingos", 2, 2);
 
 	//main loop
 	while(1)

@@ -13,9 +13,10 @@ const u16 PITCHES[] = {0,
 const u16 LEN_PITCHES = sizeof(PITCHES) / sizeof(PITCHES[0]);
 const u16 SCALE_MAJ[] = {0,2,4,5,7,9,11,12};
 u16 currentPitchIndex[4] = {0,0,0,0};
+u8 envelope[4] = {0,0,0,0};
 u8 sustainOn[4] = {0,0,0,0};
 u16 scale[4][8];
-u8 vibratoOn[4] = {1,0,0,0};
+u8 vibratoOn[4] = {0,0,0,0};
 s16 vibratoY[4] = {0,0,0,0};
 u16 vibratoX[4] = {0,0,0,0};
 u16 vibratoDepth[4] = {5,20,20,20};
@@ -24,20 +25,19 @@ u16 vibratoSpeed[4] = {60,80,80,80};
 void Instrument_init(){
 	int i,j;
 	for(i=0; i<3; i++){
-		//replace 2 with envelope[i]
-		PSG_setEnvelope(i, 2);
+		//PSG_setEnvelope(i, envelope[i]);
 		for (j=0; j<8; j++){
-			scale[i][j] = SCALE_MAJ[j];		
+			scale[i][j] = SCALE_MAJ[j];
 		}
 	}
 }
 
 void Instrument_update(){
 	int i;
-	//for each channel
+	//for each non-noise channel
 	for (i=0; i<3; i++){
 		updateVibrato(i);
-		Instrument_playNote(i);
+		if (envelope[i]) Instrument_playNote(i, envelope[i]);
 	}
 	/*char debugLog[20];
 	intToStr(vibratoY[0], debugLog, 1);
@@ -47,7 +47,7 @@ void Instrument_update(){
 
 void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 	if (changed){
-		u8 channel = (joy>0) ? 1 : 0;
+		u8 channel = (joy>0) ? CHANNEL_DEF_JOY1 : CHANNEL_DEF_JOY0;
 		s8 pitchMod = 0;
 		static u8 pitchModAbs = 1;
 
@@ -56,6 +56,17 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		u8 bC = (BUTTON_C & state);
 
 		//control
+		//s (doubletap): menu
+		//As: vibrato
+		//Bs: harmony (noise if 2p)
+		//Cs: arpeggio or portamento
+		//X: octave shift down
+		//Y: sustain
+		//Z: octave shift up
+		//Xs: key shift down
+		//Ys: pitchmod depth
+		//Zs: key shift up
+
 		if (BUTTON_X & state & changed){
 			vibratoOn[channel] = ! (vibratoOn[channel]);
 		}
@@ -75,6 +86,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		//play
 		//if any button is pressed and right is held, note will play
 		if (BUTTON_RIGHT & state){
+			envelope[channel] = ENV_DEFAULT;
 			setCPI(channel, scale[channel][buttonsToScalePitch(bA, bB, bC)], pitchMod);
 		}
 		else if (BUTTON_LEFT & state) Instrument_stopNote(channel);
@@ -82,18 +94,19 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 	}
 }
 
-void Instrument_playNote(u8 channel){
+void Instrument_playNote(u8 channel, u8 envelope){
 	u16 freq = PITCHES[currentPitchIndex[channel]];
 	if (freq && vibratoOn[channel]){
 		freq += vibratoY[channel] - vibratoDepth[channel];
 	}
+	PSG_setEnvelope(channel, envelope);
 	PSG_setFrequency(channel, freq);
 }
 
 void Instrument_stopNote(u8 channel){
-	currentPitchIndex[channel] = 0;
-	//this part is not strictly necessary as playNote is called in update
-	Instrument_playNote(channel);
+	envelope[channel] = 0;
+	//this will init for all channels, so playNote must be called every frame
+	PSG_init();
 }
 
 /* get unmodified pitch from button combination using binary fingering
