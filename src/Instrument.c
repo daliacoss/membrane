@@ -13,6 +13,8 @@ const u16 PITCHES[] = {0,
 const u16 LEN_PITCHES = sizeof(PITCHES) / sizeof(PITCHES[0]);
 const u16 SCALE_MAJ[] = {0,2,4,5,7,9,11,12};
 u16 currentPitchIndex[4] = {0,0,0,0};
+u8 octave[4] = {4,4,4,4};
+u8 pitchModDepth[4] = {1,1,1,1};
 u8 envelope[4] = {0,0,0,0};
 u8 sustainOn[4] = {0,0,0,0};
 u16 scale[4][8];
@@ -68,19 +70,28 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		//Zs: key shift up
 
 		if (BUTTON_X & state & changed){
-			vibratoOn[channel] = ! (vibratoOn[channel]);
+			//if start is pressed, change vibrato
+			if (BUTTON_START & state)
+				vibratoOn[channel] = ! (vibratoOn[channel]);
+			//else, decrease octave
+			else octave[channel] = clamp(octave[channel]-1, OCTAVE_MIN, OCTAVE_MAX);
 		}
 		if (BUTTON_Y & state & changed){
 			//if start is pressed, y button changes modulation depth
-			if (BUTTON_START & state) pitchModAbs = (pitchModAbs==1) ? OCT : 1;
+			if (BUTTON_START & state)
+				pitchModDepth[channel] = (pitchModDepth[channel]==1) ? OCT : 1;
 			//if start not pressed, y button toggles sustainOn
 			else sustainOn[channel] = ! (sustainOn[channel]);
 		}
+		if (BUTTON_Z & state & changed){
+			if (BUTTON_START & state);
+			else octave[channel] = clamp(octave[channel]+1, OCTAVE_MIN, OCTAVE_MAX);
+		}
 		if (BUTTON_UP & state){
-			pitchMod = pitchModAbs;
+			pitchMod = pitchModDepth[channel];
 		}
 		else if (BUTTON_DOWN & state){
-			pitchMod = -pitchModAbs;
+			pitchMod = -pitchModDepth[channel];
 		}
 
 		//play
@@ -91,6 +102,8 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		}
 		else if (BUTTON_LEFT & state) Instrument_stopNote(channel);
 		else if (!sustainOn[channel]) Instrument_stopNote(channel);
+
+		if (state) HUD_updateStatusView(joy);
 	}
 }
 
@@ -104,9 +117,17 @@ void Instrument_playNote(u8 channel, u8 envelope){
 }
 
 void Instrument_stopNote(u8 channel){
+	vu8 *pb;
+
 	envelope[channel] = 0;
-	//this will init for all channels, so playNote must be called every frame
-	PSG_init();
+	pb = (u8*) PSG_PORT;
+
+	//this part comes from psg.c
+	// set tone to 0
+	*pb = 0x80 | (channel << 5) | 0x00;
+	*pb = 0x00;
+	// set envelope to silent
+	*pb = 0x90 | (channel << 5) | 0x0F;
 }
 
 /* get unmodified pitch from button combination using binary fingering
@@ -122,7 +143,7 @@ static u8 buttonsToScalePitch(u8 bA, u8 bB, u8 bC){
 static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod){
 	//replace 4 with currentOctave[channel]
 	//+1 is neccessary as the first element of PITCHES is 0 Hz
-	currentPitchIndex[channel] = 1 + scalePitch + pitchMod + (4 * OCT);
+	currentPitchIndex[channel] = 1 + scalePitch + pitchMod + (octave[channel] * OCT);
 }
 
 static void updateVibrato(u8 i){
