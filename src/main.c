@@ -30,6 +30,8 @@ int main(){
 		Instrument_update();
 		HUD_update();
 		VDP_waitVSync();
+
+		//scan for new controllers
 	}
 
 	return (0);

@@ -35,7 +35,7 @@ void Instrument_init(){
 }
 
 void Instrument_update(){
-	int i;
+	u16 i;
 	//for each non-noise channel
 	for (i=0; i<3; i++){
 		updateVibrato(i);
