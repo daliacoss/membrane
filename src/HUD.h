@@ -3,7 +3,7 @@
 
 #define X0 1
 #define Y0 1
-#define Y_STATUS 3
+#define Y_STATUS 1
 #define X_STATVAL X0 + 11
 #define W_TILES 40
 

@@ -10,6 +10,9 @@
 #define OCTAVE_MAX 6
 #define VIB_SPEED_DEFAULT 80
 #define ENV_DEFAULT 3
+#define SUS_OFF 0
+#define SUS_STRUM 1
+#define SUS_FREE 2
 #define CHANNEL_DEF_JOY0 0
 #define CHANNEL_DEF_JOY1 2
 #define MAX_KEYS 10

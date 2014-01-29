@@ -1,6 +1,6 @@
 #include <genesis.h>
 #include "Instrument.h"
-//#include "music_tfd.h"
+//#include "bad_apple.h"
 
 static void joyEvent(u16 joy, u16 changed, u16 state);
 void playMusic();
@@ -22,8 +22,7 @@ int main(){
 
 	//VDP_setTileMap(APLAN, TILE_ATTR_FULL(PAL1, 1, 1, 1, 1), 5, 5);
 
-	//VDP_drawText("hello dingos", 2, 2);
-
+	///SND_startPlay_VGM(bad_apple);
 	//main loop
 	while(1)
 	{

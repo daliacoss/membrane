@@ -15,7 +15,7 @@ const u16 SCALE_MAJ[] = {0,2,4,5,7,9,11,12};
 const u16 SCALES[9][SCALE_LENGTH] = {
 	{0,2,4,5,7,9,11,12},
 	{0,2,3,5,7,9,10,12},
-	{0,1,3,5,7,9,10,12},
+	{0,1,3,5,7,8,10,12},
 	{0,2,4,6,7,9,11,12},
 	{0,2,4,5,7,9,10,12},
 	{0,2,3,5,7,8,10,12},
@@ -31,16 +31,16 @@ u8 sustainOn[4] = {0,0,0,0};
 u16 scale[4][SCALE_LENGTH];
 u8 keyIndex[2];
 u8 tonicList[2][MAX_KEYS] = {
-	{C}
+	{C,A,E,G,D,D_S}
 };
 u8 modeList[2][MAX_KEYS] = {
-	{MAJOR,MINOR,MINOR_MEL,MINOR_HARM},
+	{MAJOR,MINOR,PHRYGIAN,MINOR_HARM,DORIAN,MINOR},
 	{MAJOR,MINOR,MINOR_MEL,MINOR_HARM}
 };
 u8 vibratoOn[4] = {0,0,0,0};
 s16 vibratoY[4] = {0,0,0,0};
 u16 vibratoX[4] = {0,0,0,0};
-u16 vibratoDepth[4] = {5,20,20,20};
+u16 vibratoDepth[4] = {5,5,5,5};
 u16 vibratoSpeed[4] = {60,80,80,80};
 
 void Instrument_init(){
@@ -62,10 +62,10 @@ void Instrument_update(){
 		updateVibrato(i);
 		if (envelope[i]) Instrument_playNote(i, envelope[i]);
 	}
-	/*char debugLog[20];
-	intToStr(vibratoY[0], debugLog, 1);
+	char debugLog[20];
+	intToStr(keyIndex[0], debugLog, 1);
 	VDP_clearText(2, 20, 20);
-	VDP_drawText(debugLog, 2, 20);*/
+	VDP_drawText(debugLog, 2, 20);
 }
 
 void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
@@ -93,6 +93,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		if (BUTTON_X & state & changed){
 			//if start is pressed, go to previous key
 			if (BUTTON_START & state)
+				//happy accident: b/c keyIndex is unsigned, this will wrap around
 				setKey(joy, clamp((keyIndex[joy]-1), 0, MAX_KEYS));
 			//else, decrease octave
 			else octave[channel] = clamp(octave[channel]-1, OCTAVE_MIN, OCTAVE_MAX);
@@ -168,9 +169,10 @@ static u8 buttonsToScalePitch(u8 bA, u8 bB, u8 bC){
 }
 
 static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod){
-	//replace 4 with currentOctave[channel]
 	//+1 is neccessary as the first element of PITCHES is 0 Hz
 	currentPitchIndex[channel] = 1 + scalePitch + pitchMod + (octave[channel] * OCT);
+	//add tonic
+	currentPitchIndex[channel] += tonicList[channel][keyIndex[channel]];
 }
 
 static void updateVibrato(u8 i){
