@@ -190,10 +190,12 @@ static u8 buttonsToScalePitch(u8 bA, u8 bB, u8 bC){
 }
 
 static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod){
+	u8 joy = (channel < 2) ? 0 : 1;
+
 	//+1 is neccessary as the first element of PITCHES is 0 Hz
 	currentPitchIndex[channel] = 1 + scalePitch + pitchMod + (octave[channel] * OCT);
 	//add tonic
-	currentPitchIndex[channel] += tonicList[channel][keyIndex[channel]];
+	currentPitchIndex[channel] += tonicList[joy][keyIndex[joy]];
 	//add arp
 	
 }
@@ -234,7 +236,6 @@ static void setKey(u8 joy, u8 ki){
 			scale[j + (joy * 2)][i] = SCALES[modeList[joy][ki]][i];
 		}	
 	}
-	debugvar++;
 }
 
 static u32 clamp(u32 n, u32 min, u32 max){
