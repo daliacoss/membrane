@@ -23,35 +23,49 @@ const u16 SCALES[9][SCALE_LENGTH] = {
 	{0,2,3,5,7,9,11,12}, //melodic minor
 	{0,2,3,5,7,8,11,12}, //harmonic minor
 };
+//channel settings
 u16 currentPitchIndex[4] = {0,0,0,0};
 u8 octave[4] = {4,4,4,4};
 u8 pitchModDepth[4] = {1,1,1,1};
 u8 envelope[4] = {0,0,0,0};
 u8 sustainOn[4] = {0,0,0,0};
+u8 arpeggioOn[4] = {0};
+u8 arpeggioIndex[4] = {0,0,0,0};
+u16 arpeggioX[4] = {0,0,0,0};
+u8 arpeggioNoteLen[4] = {7,7,7,7};
+u8 arpeggioPattLen[4] = {8,8,8,8};
+s16 arpeggioPattern[4][16] = {
+	{0,0,12,7,0,5,7,0},
+	{0,0,12,7,0,5,7,0},
+	{0,0,12,7,0,5,7,0},
+	{0,0,12,7,0,5,7,0}
+};
+u8 portamentoOn[4] = {0,0,0,0};
+u16 portamentoX[4] = {0,0,0,0};
+u8 vibratoOn[4] = {0,0,0,0};
+s16 vibratoY[4] = {0,0,0,0};
+u16 vibratoX[4] = {0,0,0,0};
+u16 vibratoDepth[4] = {5,5,5,5};
+u16 vibratoSpeed[4] = {60,80,80,80};
 u16 scale[4][SCALE_LENGTH];
+
+//player settings
 u8 keyIndex[2];
+u8 debugvar = 0;
 u8 tonicList[2][MAX_KEYS] = {
+	{C,A,E,G,D,D_S},
 	{C,A,E,G,D,D_S}
 };
 u8 modeList[2][MAX_KEYS] = {
 	{MAJOR,MINOR,PHRYGIAN,MINOR_HARM,DORIAN,MINOR},
 	{MAJOR,MINOR,MINOR_MEL,MINOR_HARM}
 };
-u8 vibratoOn[4] = {0,0,0,0};
-s16 vibratoY[4] = {0,0,0,0};
-u16 vibratoX[4] = {0,0,0,0};
-u16 vibratoDepth[4] = {5,5,5,5};
-u16 vibratoSpeed[4] = {60,80,80,80};
+u8 paused[2] = {0};
 
 void Instrument_init(){
 	int i,j;
 	for(i=0; i<2; i++){
-		//replace with setKey()
 		setKey(i, 0);
-		//for (j=0; j<8; j++){
-		//	scale[i][j] = SCALE_MAJ[j];
-		//}
-
 	}
 }
 
@@ -60,6 +74,7 @@ void Instrument_update(){
 	//for each non-noise channel
 	for (i=0; i<3; i++){
 		updateVibrato(i);
+		updateArpeggio(i);
 		if (envelope[i]) Instrument_playNote(i, envelope[i]);
 	}
 	char debugLog[20];
@@ -121,7 +136,9 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		if (bA & changed && BUTTON_START & state){
 			vibratoOn[channel] = ! (vibratoOn[channel]);
 		}
-		else if (bC & changed && BUTTON_START & state);
+		else if (bB & changed && BUTTON_START & state){
+			arpeggioOn[channel] = ! (arpeggioOn[channel]);
+		}
 		//play
 		//if any button is pressed and right is held, note will play
 		else if (BUTTON_RIGHT & state){
@@ -136,7 +153,11 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 }
 
 void Instrument_playNote(u8 channel, u8 envelope){
-	u16 freq = PITCHES[currentPitchIndex[channel]];
+	u16 cpi = currentPitchIndex[channel];
+	if (arpeggioOn[channel])
+		cpi += arpeggioPattern[channel][arpeggioIndex[channel]];
+	u16 freq = PITCHES[cpi];
+
 	if (freq && vibratoOn[channel]){
 		freq += vibratoY[channel] - vibratoDepth[channel];
 	}
@@ -173,6 +194,8 @@ static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod){
 	currentPitchIndex[channel] = 1 + scalePitch + pitchMod + (octave[channel] * OCT);
 	//add tonic
 	currentPitchIndex[channel] += tonicList[channel][keyIndex[channel]];
+	//add arp
+	
 }
 
 static void updateVibrato(u8 i){
@@ -192,8 +215,18 @@ static void updateVibrato(u8 i){
 	}
 }
 
+static void updateArpeggio(u8 chan){
+	arpeggioX[chan]++;
+	if (arpeggioOn[chan] && arpeggioNoteLen[chan] && arpeggioPattLen[chan]){
+		if (arpeggioX[chan] % arpeggioNoteLen[chan] == 0){
+			arpeggioIndex[chan] = (1 + arpeggioIndex[chan]) % arpeggioPattLen[chan];
+		}
+	}
+}
+
 static void setKey(u8 joy, u8 ki){
 	int i,j;
+	//for each channel controlled by joypad
 	keyIndex[joy] = ki;
 	for (j=0;j<2;j++){
 		for (i=0;i<SCALE_LENGTH;i++){
@@ -201,7 +234,7 @@ static void setKey(u8 joy, u8 ki){
 			scale[j + (joy * 2)][i] = SCALES[modeList[joy][ki]][i];
 		}	
 	}
-
+	debugvar++;
 }
 
 static u32 clamp(u32 n, u32 min, u32 max){

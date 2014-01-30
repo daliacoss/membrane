@@ -13,6 +13,7 @@ void HUD_init(){
 		if (!i) VDP_drawText("Harmony", x, Y_STATUS+6);
 		else VDP_drawText("Noise", x, Y_STATUS+6);
 		VDP_drawText("Portamento", x, Y_STATUS+7);
+		VDP_drawText("Arpeggio", x, Y_STATUS+8);
 
 		HUD_updateStatusView(i);
 
@@ -32,7 +33,7 @@ void HUD_updateStatusView(u8 joy){
 	char status[20];
 
 	//for each line
-	for (j=0;j<6;j++){
+	for (j=0;j<9;j++){
 		drawStatusMsg(joy,j);		
 	}
 }
@@ -88,6 +89,12 @@ static void drawStatusMsg(u8 joy, u8 line){
 			break;
 		case 5:
 			strcpy(text, (vibratoOn[channel]) ? "ON" : "OFF");
+			break;
+		case 8:
+			strcpy(text, (arpeggioOn[channel]) ? "ON" : "OFF");
+			break;
+		default:
+			strcpy(text, "");
 			break;
 	}
 	//draw in either 1p column or 2p column

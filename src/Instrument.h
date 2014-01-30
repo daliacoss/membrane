@@ -47,12 +47,15 @@ extern u8 octave[4];
 extern u8 sustainOn[4];
 extern u8 vibratoOn[4];
 extern u8 pitchModDepth[4];
+extern u8 arpeggioOn[4];
+extern u8 portamentoOn[4];
 //extern u8 tonic[4];
 extern u16 scale[4][8];
 // player settings
 extern u8 keyIndex[2];
 extern u8 tonicList[2][MAX_KEYS];
 extern u8 modeList[2][MAX_KEYS];
+extern u8 paused[2];
 
 void Instrument_init();
 void Instrument_update();
@@ -63,6 +66,7 @@ void Instrument_stopNote(u8 channel);
 static u8 buttonsToScalePitch(u8, u8, u8);
 static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod);
 static void updateVibrato(u8 channel);
+static void updateArpeggio(u8 channel);
 static u32 clamp(u32 n, u32 min, u32 max);
 static void setKey(u8 joy, u8 ki);
 
