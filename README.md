@@ -3,8 +3,10 @@ PSGPlay
 
 PSGPlay is a psg-based musical instrument for the sega genesis that supports up to two players.
 
-installation
+build
 ------------
+you can start playing right away using the included psgplay.bin rom, but you can also build the rom yourself using the steps below.  
+
 1. download sgdk (windows only) https://code.google.com/p/sgdk/wiki/Download?tm=2
 2. install sgdk using the instructions on the following page, but do not go past step 6: https://code.google.com/p/sgdk/wiki/HowToUseSGDK
 3. run sgmake.bat to create out/rom.bin
