@@ -86,6 +86,7 @@ void HUD_init(){
 
 		HUD_updateStatusView(i, 0, 0, 0, 0);
 	}
+	VDP_drawText("v0.1",35,25);
 	VDP_drawText("COSSTROPOLIS.COM",23,26);
 
 	// VDP_setTileMap(APLAN, 5, 24);
