@@ -87,6 +87,12 @@ void HUD_update(){
 
 void HUD_joyEvent(u16 joy, u16 changed, u16 state){
 
+	// u8 bA = (BUTTON_A & state);
+	// u8 bB = (BUTTON_B & state);
+	// u8 bC = (BUTTON_C & state);
+	// u8 bStart = BUTTON_START & state;
+
+	// if (state || changed) HUD_updateStatusView(joy, bA, bB, bC, bStart);
 }
 
 void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart){
@@ -116,6 +122,38 @@ void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart){
 	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bA*8), x+X_BUTTONS, y+Y_BUTTONS);
 	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bB*8), x+X_BUTTONS+2, y+Y_BUTTONS);
 	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bC*8), x+X_BUTTONS+4, y+Y_BUTTONS);
+
+	char solfege[3];
+	u8 mode = modeList[joy][keyIndex[joy]];
+	u8 scalePitch = Instrument_buttonsToScalePitch(bA, bB, bC) % 7;
+	u8 truePitch = SCALES[mode][scalePitch];
+	switch (scalePitch){
+		case 0:
+			strcpy(solfege, "Do");
+			break;
+		case 1:
+			strcpy(solfege, (truePitch == 1) ? "Ra" : "Re");
+			break;
+		case 2:
+			strcpy(solfege, (truePitch == 3) ? "Me" : "Mi");
+			break;
+		case 3:
+			strcpy(solfege, (truePitch == 6) ? "Fi" : "Fa");
+			break;
+		case 4:
+			strcpy(solfege, (truePitch == 8) ? "Si" : (truePitch == 6) ? "Se" : "Sol");
+			break;
+		case 5:
+			strcpy(solfege, (truePitch == 10) ? "Li" : (truePitch == 8) ? "Le" : "La");
+			break;
+		case 6:
+			strcpy(solfege, (truePitch == 10) ? "Te" : "Ti");
+			break;
+		default:
+			strcpy(solfege, "");
+			break;
+	}
+	drawText(solfege, x+X_BUTTONS+6, y+Y_BUTTONS, 0, 3);
 }
 
 static void drawText(char *text, u16 x, u16 y, u16 c, u16 w){

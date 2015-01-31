@@ -2,7 +2,7 @@
 #define _INSTRUMENT_H_
 
 #include <genesis.h>
-// we need to include HUD so we only do the draw call when we need to
+// we include HUD so we only do the draw call when we need to
 #include "HUD.h"
 
 #define OCT 12
@@ -44,6 +44,8 @@
 #define A_S 10
 #define B 11
 
+extern const u16 SCALES[9][SCALE_LENGTH];
+
 // channel settings
 extern u16 currentPitchIndex[4];
 extern u8 octave[4];
@@ -66,5 +68,6 @@ void Instrument_update();
 void Instrument_joyEvent(u16 joy, u16 changed, u16 state);
 void Instrument_playNote(u8 channel, u8 envelope);
 void Instrument_stopNote(u8 channel);
+u8 Instrument_buttonsToScalePitch(u8, u8, u8);
 
 #endif /* _INSTRUMENT_H_ */

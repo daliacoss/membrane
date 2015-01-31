@@ -67,7 +67,6 @@ u8 modeList[2][MAX_KEYS] = {
 u8 paused[2] = {0};
 
 //static u16 buttonsToFreq(u8, u8, u8, u8, s16 modifier);
-static u8 buttonsToScalePitch(u8, u8, u8);
 static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod);
 static void updateVibrato(u8 channel);
 static void updateArpeggio(u8 channel);
@@ -146,7 +145,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 			pitchMod = pitchModDepth[channel];
 
 			if (envelope[channel]){
-				setCPI(channel, scale[channel][buttonsToScalePitch(bA, bB, bC)], pitchMod);
+				setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
 			}
 		}
 		else if (BUTTON_DOWN & state){
@@ -154,13 +153,13 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 			pitchMod = -pitchModDepth[channel];
 
 			if (envelope[channel]){
-				setCPI(channel, scale[channel][buttonsToScalePitch(bA, bB, bC)], pitchMod);
+				setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
 			}
 		}
 		//if pitch modulator has just gone neutral, re-sound note
 		else if (pitchModState[channel]){
 			pitchModState[channel] = 0;
-			setCPI(channel, scale[channel][buttonsToScalePitch(bA, bB, bC)], pitchMod);
+			setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
 		}
 
 		if (bA & changed && bStart){
@@ -173,7 +172,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		//if any button is pressed and right is held, note will play
 		else if (BUTTON_RIGHT & state){
 			envelope[channel] = ENV_DEFAULT;
-			setCPI(channel, scale[channel][buttonsToScalePitch(bA, bB, bC)], pitchMod);
+			setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
 		}
 		else if (BUTTON_LEFT & state) Instrument_stopNote(channel);
 		else if (!sustainOn[channel]) Instrument_stopNote(channel);
@@ -214,7 +213,7 @@ void Instrument_stopNote(u8 channel){
 
 /* get unmodified pitch from button combination using binary fingering
 (bC is lowest significant bit) */
-static u8 buttonsToScalePitch(u8 bA, u8 bB, u8 bC){
+u8 Instrument_buttonsToScalePitch(u8 bA, u8 bB, u8 bC){
 	bA = (bA>0) ? 1 : 0;
  	bB = (bB>0) ? 1 : 0;
   	bC = (bC>0) ? 1 : 0;
