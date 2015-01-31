@@ -34,8 +34,8 @@ const u32 circlePressed[8]=
 void HUD_init(){
 	u16 i, x, y;
 
-	VDP_loadTileData(circle, TILE_USERINDEX, 1, 0);
-	VDP_loadTileData(circlePressed, TILE_USERINDEX+1, 1, 0);
+	VDP_loadTileData((const u32 *)circle, TILE_USERINDEX, 1, 0);
+	VDP_loadTileData((const u32 *)circlePressed, TILE_USERINDEX+8, 1, 0);
 
 	for (i=0; i<2; i++){
 		x = X0 + (i * (W_TILES/2));
@@ -62,11 +62,9 @@ void HUD_init(){
 			VDP_drawText("PLAYER  2", x+X_PLAYER_NAME, y+11);
 		}
 
-		HUD_updateStatusView(i);
+		HUD_updateStatusView(i, 0, 0, 0, 0);
 	}
 	VDP_drawText("COSSTROPOLIS.COM",23,26);
-
-
 
 	// VDP_setTileMap(APLAN, 5, 24);
 
@@ -91,7 +89,7 @@ void HUD_joyEvent(u16 joy, u16 changed, u16 state){
 
 }
 
-void HUD_updateStatusView(u8 joy){
+void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart){
 	u8 i,j;
 	u8 channel;
 	char status[20];
@@ -105,9 +103,19 @@ void HUD_updateStatusView(u8 joy){
 	if (joy) x--;
 	u16 y = Y_STATUS;
 
-	// VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX), x+X_BUTTONS, y+13);
-	// VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX), x+X_BUTTONS+2, y+13);
-	// VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX), x+X_BUTTONS+4, y+13);
+	if (bStart){
+		bA = bB = bC = 0;
+	}
+	else{
+		if (bA > 0) bA = 1;
+		if (bB > 0) bB = 1;
+		if (bC > 0) bC = 1;
+	}
+
+	//draw either grey or white circles to represent the fingering buttons
+	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bA*8), x+X_BUTTONS, y+Y_BUTTONS);
+	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bB*8), x+X_BUTTONS+2, y+Y_BUTTONS);
+	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bC*8), x+X_BUTTONS+4, y+Y_BUTTONS);
 }
 
 static void drawText(char *text, u16 x, u16 y, u16 c, u16 w){

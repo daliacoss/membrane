@@ -11,7 +11,7 @@ const u16 PITCHES[] = {0,
 	2096, 2224, 2352, 2488, 2640, 2792, 2960, 3136, 3320, 3520, 3728, 3952
 };
 const u16 LEN_PITCHES = sizeof(PITCHES) / sizeof(PITCHES[0]);
-const u16 SCALE_MAJ[] = {0,2,4,5,7,9,11,12};
+// const u16 SCALE_MAJ[] = {0,2,4,5,7,9,11,12};
 const u16 SCALES[9][SCALE_LENGTH] = {
 	{0,2,4,5,7,9,11,12},
 	{0,2,3,5,7,9,10,12},
@@ -106,6 +106,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		u8 bA = (BUTTON_A & state);
 		u8 bB = (BUTTON_B & state);
 		u8 bC = (BUTTON_C & state);
+		u8 bStart = BUTTON_START & state;
 
 		//control
 		//s (doubletap): menu
@@ -121,7 +122,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 
 		if (BUTTON_X & state & changed){
 			//if start is pressed, go to previous key
-			if (BUTTON_START & state)
+			if (bStart)
 				//happy accident: b/c keyIndex is unsigned, this will wrap around
 				setKey(joy, clamp((keyIndex[joy]-1), 0, MAX_KEYS-1));
 			//else, decrease octave
@@ -129,13 +130,13 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		}
 		if (BUTTON_Y & state & changed){
 			//if start is pressed, y button changes modulation depth
-			if (BUTTON_START & state)
+			if (bStart)
 				pitchModDepth[channel] = (pitchModDepth[channel]==1) ? OCT : 1;
 			//if start not pressed, y button toggles sustainOn
 			else sustainOn[channel] = ! (sustainOn[channel]);
 		}
 		if (BUTTON_Z & state & changed){
-			if (BUTTON_START & state)
+			if (bStart)
 				setKey(joy, (keyIndex[joy]+1) % MAX_KEYS);
 			else octave[channel] = clamp(octave[channel]+1, OCTAVE_MIN, OCTAVE_MAX);
 		}
@@ -162,10 +163,10 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 			setCPI(channel, scale[channel][buttonsToScalePitch(bA, bB, bC)], pitchMod);
 		}
 
-		if (bA & changed && BUTTON_START & state){
+		if (bA & changed && bStart){
 			vibratoOn[channel] = ! (vibratoOn[channel]);
 		}
-		else if (bB & changed && BUTTON_START & state){
+		else if (bB & changed && bStart){
 			arpeggioOn[channel] = ! (arpeggioOn[channel]);
 		}
 		//play
@@ -177,7 +178,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		else if (BUTTON_LEFT & state) Instrument_stopNote(channel);
 		else if (!sustainOn[channel]) Instrument_stopNote(channel);
 
-		if (state) HUD_updateStatusView(joy);
+		if (state || changed) HUD_updateStatusView(joy, bA, bB, bC, bStart);
 	}
 }
 
