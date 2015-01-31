@@ -9,10 +9,12 @@
 #define OCTAVE_MIN 2
 #define OCTAVE_MAX 6
 #define VIB_SPEED_DEFAULT 80
+#define VIB_X_MAX 512
+#define PORTA_X_MAX 512
 #define ENV_DEFAULT 3
 #define SUS_OFF 0
 #define SUS_STRUM 1
-#define SUS_FREE 2
+#define SUS_HAMMER 2
 #define CHANNEL_DEF_JOY0 0
 #define CHANNEL_DEF_JOY1 2
 #define MAX_KEYS 10
@@ -43,12 +45,14 @@
 #define B 11
 
 // channel settings
+extern u16 currentPitchIndex[4];
 extern u8 octave[4];
 extern u8 sustainOn[4];
 extern u8 vibratoOn[4];
 extern u8 pitchModDepth[4];
 extern u8 arpeggioOn[4];
 extern u8 portamentoOn[4];
+extern u16 portamentoSpeed[4];
 //extern u8 tonic[4];
 extern u16 scale[4][8];
 // player settings
@@ -62,12 +66,5 @@ void Instrument_update();
 void Instrument_joyEvent(u16 joy, u16 changed, u16 state);
 void Instrument_playNote(u8 channel, u8 envelope);
 void Instrument_stopNote(u8 channel);
-//static u16 buttonsToFreq(u8, u8, u8, u8, s16 modifier);
-static u8 buttonsToScalePitch(u8, u8, u8);
-static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod);
-static void updateVibrato(u8 channel);
-static void updateArpeggio(u8 channel);
-static u32 clamp(u32 n, u32 min, u32 max);
-static void setKey(u8 joy, u8 ki);
 
 #endif /* _INSTRUMENT_H_ */

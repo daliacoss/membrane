@@ -1,28 +1,92 @@
 #include "HUD.h"
 
+/* clear area from c to c+w and draw text over it
+ * (c is relative to x)
+ */ 
+static void drawText(char *text, u16 x, u16 y, u16 c, u16 w);
+
+static void drawStatusMsg(u8 joy, u8 line);
+
+const u32 circle[8]=
+{
+	0x00222200,
+	0x02222220,
+	0x22222222,
+	0x22222222,
+	0x22222222,
+	0x22222222,
+	0x02222220,
+	0x00222200
+};
+
+const u32 circlePressed[8]=
+{
+	0x00FFFF00,
+	0x0FFFFFF0,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
+	0xFFFFFFFF,
+	0x0FFFFFF0,
+	0x00FFFF00
+};
+
 void HUD_init(){
-	u16 i, x;
+	u16 i, x, y;
+
+	VDP_loadTileData(circle, TILE_USERINDEX, 1, 0);
+	VDP_loadTileData(circlePressed, TILE_USERINDEX+1, 1, 0);
+
 	for (i=0; i<2; i++){
 		x = X0 + (i * (W_TILES/2));
-		VDP_drawText("Tonic", x, Y_STATUS);
-		VDP_drawText("Mode", x, Y_STATUS+1);
-		VDP_drawText("Octave", x, Y_STATUS+2);
-		VDP_drawText("Sustain", x, Y_STATUS+3);
-		VDP_drawText("Mod depth", x, Y_STATUS+4);
-		VDP_drawText("Vibrato", x, Y_STATUS+5);
-		if (!i) VDP_drawText("Harmony", x, Y_STATUS+6);
-		else VDP_drawText("Noise", x, Y_STATUS+6);
-		VDP_drawText("Portamento", x, Y_STATUS+7);
-		VDP_drawText("Arpeggio", x, Y_STATUS+8);
+		if (i) x--;
+		y = Y_STATUS;
+
+		VDP_drawText("Tonic", x, y);
+		VDP_drawText("Mode", x, y+1);
+		VDP_drawText("Octave", x, y+2);
+		VDP_drawText("Sustain", x, y+3);
+		//hard-coded blank line - check Y_STATUS_BLANK_LINE if this messes things up
+		y++;
+		VDP_drawText("Mod depth", x, y+4);
+		VDP_drawText("Vibrato", x, y+5);
+		if (!i) VDP_drawText("Harmony", x, y+6);
+		else VDP_drawText("Noise", x, y+6);
+		VDP_drawText("Portamento", x, y+7);
+		VDP_drawText("Arpeggio", x, y+8);
+
+		if (!i){
+			VDP_drawText("PLAYER  1", x+X_PLAYER_NAME, y+11);
+		}
+		else{
+			VDP_drawText("PLAYER  2", x+X_PLAYER_NAME, y+11);
+		}
 
 		HUD_updateStatusView(i);
-
 	}
+	VDP_drawText("COSSTROPOLIS.COM",23,26);
 
+
+
+	// VDP_setTileMap(APLAN, 5, 24);
+
+	// u16 pal[16];
+	// VDP_getPalette(PAL0, pal);
+	// for(i=0; i<16; i++){
+	// 	char text[5];
+	// 	intToHex(pal[i], text, 4);
+	// 	VDP_drawText(text, 1 + (i/8 * 10), 17+ (i%8));
+	// }
 }
 void HUD_update(){
-	//updateStatusView();
+	// char text[5];
+	// uintToStr(currentPitchIndex[0], text, 1);
+	// VDP_drawText(text, 10, 20);
+
+	// fix16ToStr(sinFix16(900), text, 2);
+	// VDP_drawText(text, 10, 21);
 }
+
 void HUD_joyEvent(u16 joy, u16 changed, u16 state){
 
 }
@@ -36,6 +100,14 @@ void HUD_updateStatusView(u8 joy){
 	for (j=0;j<9;j++){
 		drawStatusMsg(joy,j);		
 	}
+
+	u16 x = X0 + (joy * (W_TILES/2));
+	if (joy) x--;
+	u16 y = Y_STATUS;
+
+	// VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX), x+X_BUTTONS, y+13);
+	// VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX), x+X_BUTTONS+2, y+13);
+	// VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX), x+X_BUTTONS+4, y+13);
 }
 
 static void drawText(char *text, u16 x, u16 y, u16 c, u16 w){
@@ -82,7 +154,7 @@ static void drawStatusMsg(u8 joy, u8 line){
 			uintToStr(octave[channel], text, 1);
 			break;
 		case 3:
-			strcpy(text, (sus==SUS_STRUM) ? "STRUM" : (sus==SUS_FREE) ? "FREE" : "OFF");
+			strcpy(text, (sus==SUS_STRUM) ? "STRUM" : (sus==SUS_HAMMER) ? "HAMMER" : "OFF");
 			break;
 		case 4:
 			uintToStr(pitchModDepth[channel], text, 1);
@@ -94,9 +166,13 @@ static void drawStatusMsg(u8 joy, u8 line){
 			strcpy(text, (arpeggioOn[channel]) ? "ON" : "OFF");
 			break;
 		default:
-			strcpy(text, "");
+			strcpy(text, "???");
 			break;
 	}
+	if (line >= Y_STATUS_BLANK_LINE){
+		line++;
+	}
+
 	//draw in either 1p column or 2p column
 	drawText(text, X_STATVAL + ((u16) joy * (W_TILES/2)), Y_STATUS+line, 0, 6);
 }
