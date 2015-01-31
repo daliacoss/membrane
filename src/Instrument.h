@@ -62,6 +62,7 @@ extern u8 keyIndex[2];
 extern u8 tonicList[2][MAX_KEYS];
 extern u8 modeList[2][MAX_KEYS];
 extern u8 paused[2];
+extern u8 playing[2];
 
 void Instrument_init();
 void Instrument_update();

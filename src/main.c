@@ -1,6 +1,5 @@
 #include <genesis.h>
 #include "Instrument.h"
-//#include "bad_apple.h"
 
 static void joyEvent(u16 joy, u16 changed, u16 state);
 void playMusic();

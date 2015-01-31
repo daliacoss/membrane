@@ -65,6 +65,7 @@ u8 modeList[2][MAX_KEYS] = {
 	{MAJOR,MINOR,PHRYGIAN,MINOR_HARM,DORIAN,MINOR,MINOR_MEL,LOCRIAN,MAJOR,MINOR},
 };
 u8 paused[2] = {0};
+u8 playing[2] = {0,0};
 
 //static u16 buttonsToFreq(u8, u8, u8, u8, s16 modifier);
 static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod);
@@ -97,15 +98,21 @@ void Instrument_update(){
 }
 
 void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
+
+	u8 bA = (BUTTON_A & state);
+	u8 bB = (BUTTON_B & state);
+	u8 bC = (BUTTON_C & state);
+	u8 bStart = BUTTON_START & state;
+
 	if (changed){
 		u8 channel = (joy>0) ? CHANNEL_DEF_JOY1 : CHANNEL_DEF_JOY0;
 		s8 pitchMod = 0;
 		static u8 pitchModAbs = 1;
 
-		u8 bA = (BUTTON_A & state);
-		u8 bB = (BUTTON_B & state);
-		u8 bC = (BUTTON_C & state);
-		u8 bStart = BUTTON_START & state;
+		// u8 bA = (BUTTON_A & state);
+		// u8 bB = (BUTTON_B & state);
+		// u8 bC = (BUTTON_C & state);
+		// u8 bStart = BUTTON_START & state;
 
 		//control
 		//s (doubletap): menu
@@ -173,12 +180,17 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		else if (BUTTON_RIGHT & state){
 			envelope[channel] = ENV_DEFAULT;
 			setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
+
+			//we set playing from here instead of Instrument_playNote so HUD will register it in time
+			playing[joy] = 1;
 		}
 		else if (BUTTON_LEFT & state) Instrument_stopNote(channel);
 		else if (!sustainOn[channel]) Instrument_stopNote(channel);
 
-		if (state || changed) HUD_updateStatusView(joy, bA, bB, bC, bStart);
+		// setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], -1);
+		HUD_updateStatusView(joy, bA, bB, bC, bStart);
 	}
+	// else if (state) HUD_updateStatusView(joy, bA, bB, bC, bStart);
 }
 
 void Instrument_playNote(u8 channel, u8 envelope){
@@ -201,6 +213,13 @@ void Instrument_stopNote(u8 channel){
 
 	envelope[channel] = 0;
 	PSG_setEnvelope(channel, PSG_ENVELOPE_MIN);
+
+	if (channel <= 1){
+		playing[0] = 0;
+	}
+	else if (channel <= 3){
+		playing[1] = 0;
+	}
 	/*pb = (u8*) PSG_PORT;
 
 	//this part comes from psg.c

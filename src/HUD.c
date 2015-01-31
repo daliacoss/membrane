@@ -18,7 +18,6 @@ const u32 circle[8]=
 	0x02222220,
 	0x00222200
 };
-
 const u32 circlePressed[8]=
 {
 	0x00FFFF00,
@@ -30,12 +29,35 @@ const u32 circlePressed[8]=
 	0x0FFFFFF0,
 	0x00FFFF00
 };
+const u32 note[16]=
+{
+	0x0000FF00,
+	0x0000FFF0,
+	0x0000F00F,
+	0x0000F000,
+	0x0000F000,
+	0x0000F000,
+	0x0000F000,
+	0x0000F000,
+
+	0x0000F000,
+	0x0FFFF000,
+	0xFFFFF000,
+	0x0FFF0000,
+	0x00000000,
+	0x00000000,
+	0x00000000,
+	0x00000000
+};
+
+u8 test = 0;
 
 void HUD_init(){
 	u16 i, x, y;
 
 	VDP_loadTileData((const u32 *)circle, TILE_USERINDEX, 1, 0);
-	VDP_loadTileData((const u32 *)circlePressed, TILE_USERINDEX+8, 1, 0);
+	VDP_loadTileData((const u32 *)circlePressed, TILE_USERINDEX+1, 1, 0);
+	VDP_loadTileData((const u32 *)note, TILE_USERINDEX+2, 2, 0);
 
 	for (i=0; i<2; i++){
 		x = X0 + (i * (W_TILES/2));
@@ -77,9 +99,6 @@ void HUD_init(){
 	// }
 }
 void HUD_update(){
-	// char text[5];
-	// uintToStr(currentPitchIndex[0], text, 1);
-	// VDP_drawText(text, 10, 20);
 
 	// fix16ToStr(sinFix16(900), text, 2);
 	// VDP_drawText(text, 10, 21);
@@ -102,7 +121,7 @@ void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart){
 
 	//for each line
 	for (j=0;j<9;j++){
-		drawStatusMsg(joy,j);		
+		drawStatusMsg(joy,j);
 	}
 
 	u16 x = X0 + (joy * (W_TILES/2));
@@ -119,9 +138,9 @@ void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart){
 	}
 
 	//draw either grey or white circles to represent the fingering buttons
-	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bA*8), x+X_BUTTONS, y+Y_BUTTONS);
-	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bB*8), x+X_BUTTONS+2, y+Y_BUTTONS);
-	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bC*8), x+X_BUTTONS+4, y+Y_BUTTONS);
+	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bA), x+X_BUTTONS, y+Y_BUTTONS);
+	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bB), x+X_BUTTONS+2, y+Y_BUTTONS);
+	VDP_setTileMapXY(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+bC), x+X_BUTTONS+4, y+Y_BUTTONS);
 
 	char solfege[3];
 	u8 mode = modeList[joy][keyIndex[joy]];
@@ -154,6 +173,16 @@ void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart){
 			break;
 	}
 	drawText(solfege, x+X_BUTTONS+6, y+Y_BUTTONS, 0, 3);
+
+	// VDP_fillTileMapRectInc(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+2), x+X_NOTE, 25, 1, 2);
+
+	if (playing[joy]){
+		VDP_fillTileMapRectInc(APLAN, TILE_ATTR_FULL(PAL0, 0, 0, 0, TILE_USERINDEX+2), x+X_NOTE, Y_NOTE, 1, 2);
+	}
+	else {
+		VDP_clearTileMapRect(APLAN, x+X_NOTE, Y_NOTE, 1, 2);
+	}
+
 }
 
 static void drawText(char *text, u16 x, u16 y, u16 c, u16 w){

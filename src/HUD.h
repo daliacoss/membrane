@@ -10,6 +10,8 @@
 #define X_PLAYER_NAME 5
 #define X_BUTTONS 5
 #define Y_BUTTONS 14
+#define X_NOTE 9
+#define Y_NOTE 19
 
 void HUD_init();
 void HUD_update();
