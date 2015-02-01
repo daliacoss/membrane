@@ -13,7 +13,7 @@ See manual.pdf for help on playing the game itself.
 Build (Windows only)
 ------------
 
-**Dependencies**
+**Dependencies**  
 sgdk: https://code.google.com/p/sgdk/wiki/Download?tm=2  
 sgmake: https://github.com/deckman/sgmake
 
