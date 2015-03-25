@@ -86,7 +86,7 @@ void HUD_init(){
 
 		HUD_updateStatusView(i, 0, 0, 0, 0);
 	}
-	VDP_drawText("v0.1",35,25);
+	VDP_drawText("v0.2dev",32,25);
 	VDP_drawText("COSSTROPOLIS.COM",23,26);
 
 	// VDP_setTileMap(APLAN, 5, 24);
@@ -101,8 +101,12 @@ void HUD_init(){
 }
 void HUD_update(){
 
-	// fix16ToStr(sinFix16(900), text, 2);
+	// char text[5];
+	// uintToStr(currentPitchIndex[0], text, 2);
 	// VDP_drawText(text, 10, 21);
+
+	// uintToStr(currentPitchIndex[1], text, 2);
+	// VDP_drawText(text, 10, 22);
 }
 
 void HUD_joyEvent(u16 joy, u16 changed, u16 state){
@@ -237,6 +241,14 @@ static void drawStatusMsg(u8 joy, u8 line){
 			break;
 		case 5:
 			strcpy(text, (vibratoOn[channel]) ? "ON" : "OFF");
+			break;
+		case 6:
+			if (!joy){
+				strcpy(text, (harmonyOn) ? "ON" : "OFF");
+			}
+			else{
+				strcpy(text, "???");
+			}
 			break;
 		case 8:
 			strcpy(text, (arpeggioOn[channel]) ? "ON" : "OFF");

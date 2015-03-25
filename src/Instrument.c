@@ -26,6 +26,7 @@ const u16 SCALES[9][SCALE_LENGTH] = {
 //channel settings
 u16 currentPitchIndex[4] = {0,0,0,0};
 u16 lastPitchIndex[4] = {0,0,0,0};
+u8 harmonyInterval = 2;	//harmony only available for player 1
 u8 octave[4] = {4,4,4,4};
 u8 pitchModDepth[4] = {1,1,1,1};
 s8 pitchModState[4] = {0,0,0,0};
@@ -34,11 +35,11 @@ u8 sustainOn[4] = {0,0,0,0};
 u8 arpeggioOn[4] = {0};
 u8 arpeggioIndex[4] = {0,0,0,0};
 u16 arpeggioX[4] = {0,0,0,0};
-u8 arpeggioNoteLen[4] = {2,7,7,7};
-u8 arpeggioPattLen[4] = {2,8,8,8};
+u8 arpeggioNoteLen[4] = {2,2,7,7};
+u8 arpeggioPattLen[4] = {2,2,8,8};
 s16 arpeggioPattern[4][16] = {
 	{0,12},
-	{0,0,12,7,0,5,7,0},
+	{0,12},
 	{0,0,12,7,0,5,7,0},
 	{0,0,12,7,0,5,7,0}
 };
@@ -51,6 +52,8 @@ s16 vibratoY[4] = {0,0,0,0};
 u16 vibratoX[4] = {0,0,0,0};
 fix16 vibratoDepth[4] = {FIX16(.4),FIX16(.4),FIX16(.4),FIX16(.4)};
 u16 vibratoSpeed[4] = {60,80,80,80};
+u8 harmonyOn = 0;
+u8 noiseOn = 0;
 u16 scale[4][SCALE_LENGTH];
 
 //player settings
@@ -171,23 +174,48 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 
 		if (bA & changed && bStart){
 			vibratoOn[channel] = ! (vibratoOn[channel]);
+			if (channel == CHANNEL_DEF_JOY0){
+				vibratoOn[CHANNEL_DEF_HARMONY] = ! vibratoOn[CHANNEL_DEF_HARMONY];
+			}
 		}
 		else if (bB & changed && bStart){
 			arpeggioOn[channel] = ! (arpeggioOn[channel]);
+			if (! joy){
+				arpeggioOn[CHANNEL_DEF_HARMONY] = ! arpeggioOn[CHANNEL_DEF_HARMONY];
+			}
+		}
+		else if (bC & changed && bStart){
+			//harmony for player 1
+			if (! joy){
+				harmonyOn = ! harmonyOn;
+
+				//silence harmony channel if we're turning harmmony off
+				if (! harmonyOn){
+					Instrument_stopNote(CHANNEL_DEF_HARMONY);
+				}
+			}
+			//noise for player 2
 		}
 		//play
 		//if any button is pressed and right is held, note will play
 		else if (BUTTON_RIGHT & state){
 			envelope[channel] = ENV_DEFAULT;
-			setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
+			// setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
+			Instrument_setPitch(joy, Instrument_buttonsToScalePitch(bA, bB, bC), pitchMod);
 
-			//we set playing from here instead of Instrument_playNote so HUD will register it in time
+			if (channel == CHANNEL_DEF_JOY0 && harmonyOn){
+				envelope[CHANNEL_DEF_HARMONY] = ENV_DEFAULT;
+			}
+
 			playing[joy] = 1;
 		}
-		else if (BUTTON_LEFT & state) Instrument_stopNote(channel);
-		else if (!sustainOn[channel]) Instrument_stopNote(channel);
+		else if ((BUTTON_LEFT & state) || !sustainOn[channel]){
+			Instrument_stopNote(channel);
+			// if (channel == CHANNEL_DEF_JOY0 && harmonyOn){
+			Instrument_stopNote(CHANNEL_DEF_HARMONY);
+			// }
+		}
 
-		// setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], -1);
 		HUD_updateStatusView(joy, bA, bB, bC, bStart);
 	}
 	// else if (state) HUD_updateStatusView(joy, bA, bB, bC, bStart);
@@ -230,6 +258,19 @@ void Instrument_stopNote(u8 channel){
 	*pb = 0x90 | (channel << 5) | 0x0F;*/
 }
 
+void Instrument_setPitch(u8 joy, u8 scalePitch, u8 pitchMod){
+
+	u8 channel = (joy>0) ? CHANNEL_DEF_JOY1 : CHANNEL_DEF_JOY0;
+
+	setCPI(channel, scale[channel][scalePitch], pitchMod);
+	if (channel == CHANNEL_DEF_JOY0 && harmonyOn){
+		u8 harmonyPitch = (scalePitch + harmonyInterval) % (SCALE_LENGTH-1);
+
+		u8 octave = (scalePitch + harmonyInterval) / (SCALE_LENGTH - 1);
+		setCPI(CHANNEL_DEF_HARMONY, scale[channel][harmonyPitch], pitchMod + octave * OCT);
+	}
+}
+
 /* get unmodified pitch from button combination using binary fingering
 (bC is lowest significant bit) */
 u8 Instrument_buttonsToScalePitch(u8 bA, u8 bB, u8 bC){
@@ -241,6 +282,7 @@ u8 Instrument_buttonsToScalePitch(u8 bA, u8 bB, u8 bC){
 }
 
 static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod){
+
 	u8 joy = (channel < 2) ? 0 : 1;
 
 	lastPitchIndex[channel] = currentPitchIndex[channel];

@@ -16,6 +16,7 @@
 #define SUS_STRUM 1
 #define SUS_HAMMER 2
 #define CHANNEL_DEF_JOY0 0
+#define CHANNEL_DEF_HARMONY 1
 #define CHANNEL_DEF_JOY1 2
 #define MAX_KEYS 10
 #define SCALE_LENGTH 8
@@ -63,12 +64,14 @@ extern u8 tonicList[2][MAX_KEYS];
 extern u8 modeList[2][MAX_KEYS];
 extern u8 paused[2];
 extern u8 playing[2];
+extern u8 harmonyOn;
 
 void Instrument_init();
 void Instrument_update();
 void Instrument_joyEvent(u16 joy, u16 changed, u16 state);
 void Instrument_playNote(u8 channel, u8 envelope);
 void Instrument_stopNote(u8 channel);
+void Instrument_setPitch(u8 joy, u8 scalePitch, u8 pitchMod);
 u8 Instrument_buttonsToScalePitch(u8, u8, u8);
 
 #endif /* _INSTRUMENT_H_ */
