@@ -102,10 +102,10 @@ void HUD_init(){
 void HUD_update(){
 
 	// char text[5];
-	// uintToStr(currentPitchIndex[0], text, 2);
+	// uintToStr(currentPitchIndex[0], text, 5);
 	// VDP_drawText(text, 10, 21);
 
-	// uintToStr(currentPitchIndex[1], text, 2);
+	// intToStr(portamentoY[0], text, 5);
 	// VDP_drawText(text, 10, 22);
 }
 
@@ -249,6 +249,9 @@ static void drawStatusMsg(u8 joy, u8 line){
 			else{
 				strcpy(text, "???");
 			}
+			break;
+		case 7:
+			strcpy(text, (portamentoOn[channel]) ? "ON" : "OFF");
 			break;
 		case 8:
 			strcpy(text, (arpeggioOn[channel]) ? "ON" : "OFF");

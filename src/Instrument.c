@@ -46,7 +46,7 @@ s16 arpeggioPattern[4][16] = {
 u8 portamentoOn[4] = {0,0,0,0};
 u16 portamentoX[4] = {0,0,0,0};
 s32 portamentoY[4] = {0,0,0,0};
-u16 portamentoSpeed[4] = {1024};
+u16 portamentoSpeed[4] = {100,100,100,100};
 u8 vibratoOn[4] = {0,0,0,0};
 s16 vibratoY[4] = {0,0,0,0};
 u16 vibratoX[4] = {0,0,0,0};
@@ -77,6 +77,7 @@ static void updateArpeggio(u8 channel);
 static void updatePortamento(u8 channel);
 static u32 clamp(u32 n, u32 min, u32 max);
 static void setKey(u8 joy, u8 ki);
+static void restartPortamento(u8 channel);
 
 void Instrument_init(){
 	int i,j;
@@ -94,6 +95,8 @@ void Instrument_update(){
 		updatePortamento(i);
 		if (envelope[i]) Instrument_playNote(i, envelope[i]);
 	}
+
+	octave[CHANNEL_DEF_HARMONY] = octave[CHANNEL_DEF_JOY0];
 	// char debugLog[20];
 	// intToStr(keyIndex[0], debugLog, 1);
 	// VDP_clearText(2, 20, 20);
@@ -128,14 +131,21 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		//Xs: key shift down
 		//Ys: pitchmod depth
 		//Zs: key shift up
+		//UPs: portamento
 
 		if (BUTTON_X & state & changed){
 			//if start is pressed, go to previous key
-			if (bStart)
+			if (bStart){
 				//happy accident: b/c keyIndex is unsigned, this will wrap around
 				setKey(joy, clamp((keyIndex[joy]-1), 0, MAX_KEYS-1));
+			}
 			//else, decrease octave
-			else octave[channel] = clamp(octave[channel]-1, OCTAVE_MIN, OCTAVE_MAX);
+			else {
+				octave[channel] = clamp(octave[channel]-1, OCTAVE_MIN, OCTAVE_MAX);
+				if (!joy){
+					octave[CHANNEL_DEF_HARMONY] = octave[channel];
+				}
+			}
 		}
 		if (BUTTON_Y & state & changed){
 			//if start is pressed, y button changes modulation depth
@@ -147,15 +157,28 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		if (BUTTON_Z & state & changed){
 			if (bStart)
 				setKey(joy, (keyIndex[joy]+1) % MAX_KEYS);
-			else octave[channel] = clamp(octave[channel]+1, OCTAVE_MIN, OCTAVE_MAX);
+			else {
+				octave[channel] = clamp(octave[channel]+1, OCTAVE_MIN, OCTAVE_MAX);
+				if (!joy){
+					octave[CHANNEL_DEF_HARMONY] = octave[channel];
+				}
+			}
 		}
 
 		if (BUTTON_UP & state){
-			pitchModState[channel] = pitchModDepth[channel];
-			pitchMod = pitchModDepth[channel];
+			if (BUTTON_UP & changed && bStart){
+				portamentoOn[channel] = ! portamentoOn[channel];
+				if (!joy){
+					portamentoOn[CHANNEL_DEF_HARMONY] = ! portamentoOn[CHANNEL_DEF_HARMONY];
+				}
+			}
+			else {
+				pitchModState[channel] = pitchModDepth[channel];
+				pitchMod = pitchModDepth[channel];
 
-			if (envelope[channel]){
-				setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
+				if (envelope[channel]){
+					Instrument_setPitch(joy, Instrument_buttonsToScalePitch(bA, bB, bC), pitchMod);
+				}
 			}
 		}
 		else if (BUTTON_DOWN & state){
@@ -163,18 +186,19 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 			pitchMod = -pitchModDepth[channel];
 
 			if (envelope[channel]){
-				setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
+				Instrument_setPitch(joy, Instrument_buttonsToScalePitch(bA, bB, bC), pitchMod);
 			}
 		}
 		//if pitch modulator has just gone neutral, re-sound note
 		else if (pitchModState[channel]){
 			pitchModState[channel] = 0;
-			setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
+			Instrument_setPitch(joy, Instrument_buttonsToScalePitch(bA, bB, bC), pitchMod);
+			// setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
 		}
 
 		if (bA & changed && bStart){
 			vibratoOn[channel] = ! (vibratoOn[channel]);
-			if (channel == CHANNEL_DEF_JOY0){
+			if (! joy){
 				vibratoOn[CHANNEL_DEF_HARMONY] = ! vibratoOn[CHANNEL_DEF_HARMONY];
 			}
 		}
@@ -193,12 +217,20 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 				if (! harmonyOn){
 					Instrument_stopNote(CHANNEL_DEF_HARMONY);
 				}
+				else if (envelope[channel]){
+					envelope[CHANNEL_DEF_HARMONY] = ENV_DEFAULT;
+				}
 			}
 			//noise for player 2
 		}
 		//play
 		//if any button is pressed and right is held, note will play
 		else if (BUTTON_RIGHT & state){
+
+			if (envelope[channel] && portamentoOn[channel]){
+				restartPortamento(channel);
+			}
+
 			envelope[channel] = ENV_DEFAULT;
 			// setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
 			Instrument_setPitch(joy, Instrument_buttonsToScalePitch(bA, bB, bC), pitchMod);
@@ -211,9 +243,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 		}
 		else if ((BUTTON_LEFT & state) || !sustainOn[channel]){
 			Instrument_stopNote(channel);
-			// if (channel == CHANNEL_DEF_JOY0 && harmonyOn){
 			Instrument_stopNote(CHANNEL_DEF_HARMONY);
-			// }
 		}
 
 		HUD_updateStatusView(joy, bA, bB, bC, bStart);
@@ -230,6 +260,9 @@ void Instrument_playNote(u8 channel, u8 envelope){
 	if (freq && vibratoOn[channel]){
 		//remove the "- vibratoDepth" to change the direction of the vibrato
 		freq -= fix16ToInt(vibratoY[channel]);// - vibratoDepth[channel];
+	}
+	if (portamentoOn[channel]){
+		freq -= portamentoY[channel];
 	}
 	PSG_setEnvelope(channel, envelope);
 	PSG_setFrequency(channel, freq);
@@ -263,11 +296,15 @@ void Instrument_setPitch(u8 joy, u8 scalePitch, u8 pitchMod){
 	u8 channel = (joy>0) ? CHANNEL_DEF_JOY1 : CHANNEL_DEF_JOY0;
 
 	setCPI(channel, scale[channel][scalePitch], pitchMod);
-	if (channel == CHANNEL_DEF_JOY0 && harmonyOn){
+	if (channel == CHANNEL_DEF_JOY0){
 		u8 harmonyPitch = (scalePitch + harmonyInterval) % (SCALE_LENGTH-1);
 
 		u8 octave = (scalePitch + harmonyInterval) / (SCALE_LENGTH - 1);
 		setCPI(CHANNEL_DEF_HARMONY, scale[channel][harmonyPitch], pitchMod + octave * OCT);
+
+		// char text[5];
+		// intToStr(octave * OCT, text, 4);
+		// VDP_drawText(text, 10, 26);
 	}
 }
 
@@ -344,13 +381,48 @@ static void updateArpeggio(u8 chan){
 	}
 }
 
+static void restartPortamento(u8 channel){
+	portamentoX[channel] = PORTA_X_MAX;
+}
+
 static void updatePortamento(u8 channel){
 	if (portamentoOn[channel]){
-		if (lastPitchIndex[channel] == currentPitchIndex[channel])
-			portamentoX[channel] = PORTA_X_MAX;
-		if (portamentoX[channel] <= PORTA_X_MAX){
-			portamentoX[channel]++;
+
+		u16 px = portamentoX[channel];
+		s32 py;
+
+		if (lastPitchIndex[channel] == currentPitchIndex[channel]){
+			portamentoX[channel] = 0;
 		}
+		else if (portamentoX[channel] >= portamentoSpeed[channel]){
+			if (px > PORTA_X_MAX){
+				portamentoX[channel] = 0;
+			}
+			else {
+				portamentoX[channel] -= portamentoSpeed[channel];
+			}
+		}
+		else if (portamentoX[channel] < portamentoSpeed[channel]){
+			portamentoX[channel] = 0;
+		}
+		//if portamento is at max, do nothing
+		else{
+			return;
+		}
+
+		s32 delta = PITCHES[currentPitchIndex[channel]] - PITCHES[lastPitchIndex[channel]];
+		py = fix32ToRoundedInt(fix32Mul(fix32Div(intToFix32(px), intToFix32(PORTA_X_MAX)), intToFix32(delta)));
+		portamentoY[channel] = py;
+
+		// char text[5];
+		// intToStr(PITCHES[currentPitchIndex[channel]], text, 4);
+		// VDP_drawText(text, 10, 26);
+
+		// intToStr(PITCHES[lastPitchIndex[channel]], text, 4);
+		// VDP_drawText(text, 15, 26);
+
+		// intToStr(delta, text, 4);
+		// VDP_drawText(text, 10, 27);
 	}
 }
 

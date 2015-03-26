@@ -9,8 +9,8 @@
 #define OCTAVE_MIN 2
 #define OCTAVE_MAX 6
 #define VIB_SPEED_DEFAULT 80
-#define VIB_X_MAX 512
-#define PORTA_X_MAX 512
+#define VIB_X_MAX 511
+#define PORTA_X_MAX 511
 #define ENV_DEFAULT 3
 #define SUS_OFF 0
 #define SUS_STRUM 1
@@ -65,6 +65,9 @@ extern u8 modeList[2][MAX_KEYS];
 extern u8 paused[2];
 extern u8 playing[2];
 extern u8 harmonyOn;
+
+extern u16 portamentoX[4];
+extern s32 portamentoY[4];
 
 void Instrument_init();
 void Instrument_update();
