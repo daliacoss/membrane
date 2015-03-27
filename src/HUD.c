@@ -50,6 +50,18 @@ const u32 note[16]=
 	0x00000000
 };
 
+const u8 statusCodes[9] = {
+	STATUS_CODE_KEY,
+	STATUS_CODE_KEY, //store key twice, because it's written on two lines
+	STATUS_CODE_OCTAVE,
+	STATUS_CODE_SUSTAIN,
+	STATUS_CODE_MOD,
+	STATUS_CODE_VIBRATO,
+	STATUS_CODE_ARP,
+	STATUS_CODE_HARMONY,
+	STATUS_CODE_PORTA,
+};
+
 u8 test = 0;
 
 void HUD_init(){
@@ -72,10 +84,10 @@ void HUD_init(){
 		y++;
 		VDP_drawText("Mod depth", x, y+4);
 		VDP_drawText("Vibrato", x, y+5);
-		if (!i) VDP_drawText("Harmony", x, y+6);
-		else VDP_drawText("Noise", x, y+6);
-		VDP_drawText("Portamento", x, y+7);
-		VDP_drawText("Arpeggio", x, y+8);
+		VDP_drawText("Arpeggio", x, y+6);
+		if (!i) VDP_drawText("Harmony", x, y+7);
+		else VDP_drawText("Noise", x, y+7);
+		VDP_drawText("Portamento", x, y+8);
 
 		if (!i){
 			VDP_drawText("PLAYER  1", x+X_PLAYER_NAME, y+11);
@@ -84,7 +96,7 @@ void HUD_init(){
 			VDP_drawText("PLAYER  2", x+X_PLAYER_NAME, y+11);
 		}
 
-		HUD_updateStatusView(i, 0, 0, 0, 0);
+		HUD_updateStatusView(i, 0, 0, 0, 0, 255);
 	}
 	VDP_drawText("v0.2dev",32,25);
 	VDP_drawText("COSSTROPOLIS.COM",23,26);
@@ -119,14 +131,16 @@ void HUD_joyEvent(u16 joy, u16 changed, u16 state){
 	// if (state || changed) HUD_updateStatusView(joy, bA, bB, bC, bStart);
 }
 
-void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart){
+void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart, u8 statusCode){
 	u8 i,j;
 	u8 channel;
 	char status[20];
 
 	//for each line
 	for (j=0;j<9;j++){
-		drawStatusMsg(joy,j);
+		if (statusCode & statusCodes[j]){
+			drawStatusMsg(joy,j);
+		}
 	}
 
 	u16 x = X0 + (joy * (W_TILES/2));
@@ -242,18 +256,24 @@ static void drawStatusMsg(u8 joy, u8 line){
 		case 5:
 			strcpy(text, (vibratoOn[channel]) ? "ON" : "OFF");
 			break;
-		case 6:
+		case 7:
 			if (!joy){
 				strcpy(text, (harmonyOn) ? "ON" : "OFF");
 			}
 			else{
-				strcpy(text, "???");
+				// strcpy(text, (noiseOn) ? "ON" : "OFF");
+				if (noiseOn){
+					uintToStr(noiseOn, text, 1);
+				}
+				else{
+					strcpy(text, "OFF");
+				}
 			}
 			break;
-		case 7:
+		case 8:
 			strcpy(text, (portamentoOn[channel]) ? "ON" : "OFF");
 			break;
-		case 8:
+		case 6:
 			strcpy(text, (arpeggioOn[channel]) ? "ON" : "OFF");
 			break;
 		default:

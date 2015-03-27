@@ -13,7 +13,16 @@
 #define X_NOTE 9
 #define Y_NOTE 19
 
+#define STATUS_CODE_KEY 128
+#define STATUS_CODE_OCTAVE 64
+#define STATUS_CODE_SUSTAIN 32
+#define STATUS_CODE_MOD 16
+#define STATUS_CODE_VIBRATO 8
+#define STATUS_CODE_HARMONY 4
+#define STATUS_CODE_PORTA 2
+#define STATUS_CODE_ARP 1
+
 void HUD_init();
 void HUD_update();
 void HUD_joyEvent(u16 joy, u16 changed, u16 state);
-void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart);
+void HUD_updateStatusView(u8 joy, u8 bA, u8 bB, u8 bC, u8 bStart, u8 statusCode);

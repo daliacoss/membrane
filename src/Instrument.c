@@ -24,6 +24,7 @@ const u16 SCALES[9][SCALE_LENGTH] = {
 	{0,2,3,5,7,8,11,12}, //harmonic minor
 };
 //channel settings
+u16 scale[4][SCALE_LENGTH];
 u16 currentPitchIndex[4] = {0,0,0,0};
 u16 lastPitchIndex[4] = {0,0,0,0};
 u8 harmonyInterval = 2;	//harmony only available for player 1
@@ -54,7 +55,8 @@ fix16 vibratoDepth[4] = {FIX16(.4),FIX16(.4),FIX16(.4),FIX16(.4)};
 u16 vibratoSpeed[4] = {60,80,80,80};
 u8 harmonyOn = 0;
 u8 noiseOn = 0;
-u16 scale[4][SCALE_LENGTH];
+// u8 noiseType;
+// u8 noiseFreq;
 
 //player settings
 u8 keyIndex[2];
@@ -67,8 +69,16 @@ u8 modeList[2][MAX_KEYS] = {
 	{MAJOR,MINOR,PHRYGIAN,MINOR_HARM,DORIAN,MINOR,MINOR_MEL,LOCRIAN,MAJOR,MINOR},
 	{MAJOR,MINOR,PHRYGIAN,MINOR_HARM,DORIAN,MINOR,MINOR_MEL,LOCRIAN,MAJOR,MINOR},
 };
+u8 noiseModes[MAX_NOISE_MODES][2] = {
+	{PSG_NOISE_TYPE_PERIODIC, PSG_NOISE_FREQ_TONE3},
+	{PSG_NOISE_TYPE_WHITE, PSG_NOISE_FREQ_TONE3},
+	{PSG_NOISE_TYPE_WHITE, PSG_NOISE_FREQ_CLOCK2},
+	{PSG_NOISE_TYPE_WHITE, PSG_NOISE_FREQ_CLOCK4},
+	{PSG_NOISE_TYPE_WHITE, PSG_NOISE_FREQ_CLOCK8},
+};
 u8 paused[2] = {0};
 u8 playing[2] = {0,0};
+
 
 //static u16 buttonsToFreq(u8, u8, u8, u8, s16 modifier);
 static void setCPI(u8 channel, u8 scalePitch, s8 pitchMod);
@@ -78,6 +88,7 @@ static void updatePortamento(u8 channel);
 static u32 clamp(u32 n, u32 min, u32 max);
 static void setKey(u8 joy, u8 ki);
 static void restartPortamento(u8 channel);
+static void changeNoiseMode();
 
 void Instrument_init(){
 	int i,j;
@@ -88,11 +99,13 @@ void Instrument_init(){
 
 void Instrument_update(){
 	u16 i;
-	//for each non-noise channel
-	for (i=0; i<3; i++){
-		updateVibrato(i);
-		updateArpeggio(i);
-		updatePortamento(i);
+	//for each channel
+	for (i=0; i<4; i++){
+		if (i != CHANNEL_DEF_NOISE){
+			updateVibrato(i);
+			updateArpeggio(i);
+			updatePortamento(i);
+		}
 		if (envelope[i]) Instrument_playNote(i, envelope[i]);
 	}
 
@@ -109,6 +122,8 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 	u8 bB = (BUTTON_B & state);
 	u8 bC = (BUTTON_C & state);
 	u8 bStart = BUTTON_START & state;
+
+	u8 statusCode = 0;
 
 	if (changed){
 		u8 channel = (joy>0) ? CHANNEL_DEF_JOY1 : CHANNEL_DEF_JOY0;
@@ -138,6 +153,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 			if (bStart){
 				//happy accident: b/c keyIndex is unsigned, this will wrap around
 				setKey(joy, clamp((keyIndex[joy]-1), 0, MAX_KEYS-1));
+				statusCode += STATUS_CODE_KEY;
 			}
 			//else, decrease octave
 			else {
@@ -145,25 +161,36 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 				if (!joy){
 					octave[CHANNEL_DEF_HARMONY] = octave[channel];
 				}
+				statusCode += STATUS_CODE_OCTAVE;
 			}
 		}
-		if (BUTTON_Y & state & changed){
-			//if start is pressed, y button changes modulation depth
-			if (bStart)
-				pitchModDepth[channel] = (pitchModDepth[channel]==1) ? OCT : 1;
-			//if start not pressed, y button toggles sustainOn
-			else sustainOn[channel] = ! (sustainOn[channel]);
-		}
-		if (BUTTON_Z & state & changed){
-			if (bStart)
+		else if (BUTTON_Z & state & changed){
+			if (bStart){
 				setKey(joy, (keyIndex[joy]+1) % MAX_KEYS);
+				statusCode += STATUS_CODE_KEY;
+			}
 			else {
 				octave[channel] = clamp(octave[channel]+1, OCTAVE_MIN, OCTAVE_MAX);
 				if (!joy){
 					octave[CHANNEL_DEF_HARMONY] = octave[channel];
 				}
+				statusCode += STATUS_CODE_OCTAVE;
 			}
 		}
+
+		if (BUTTON_Y & state & changed){
+			//if start is pressed, y button changes modulation depth
+			if (bStart){
+				pitchModDepth[channel] = (pitchModDepth[channel]==1) ? OCT : 1;
+				statusCode += STATUS_CODE_MOD;
+			}
+			//if start not pressed, y button toggles sustainOn
+			else {
+				sustainOn[channel] = ! (sustainOn[channel]);
+				statusCode += STATUS_CODE_SUSTAIN;
+			}
+		}
+
 
 		if (BUTTON_UP & state){
 			if (BUTTON_UP & changed && bStart){
@@ -171,12 +198,13 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 				if (!joy){
 					portamentoOn[CHANNEL_DEF_HARMONY] = ! portamentoOn[CHANNEL_DEF_HARMONY];
 				}
+				statusCode += STATUS_CODE_PORTA;
 			}
 			else {
 				pitchModState[channel] = pitchModDepth[channel];
 				pitchMod = pitchModDepth[channel];
 
-				if (envelope[channel]){
+				if (envelope[channel] != PSG_ENVELOPE_MIN){
 					Instrument_setPitch(joy, Instrument_buttonsToScalePitch(bA, bB, bC), pitchMod);
 				}
 			}
@@ -185,7 +213,7 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 			pitchModState[channel] = -pitchModDepth[channel];
 			pitchMod = -pitchModDepth[channel];
 
-			if (envelope[channel]){
+			if (envelope[channel] != PSG_ENVELOPE_MIN){
 				Instrument_setPitch(joy, Instrument_buttonsToScalePitch(bA, bB, bC), pitchMod);
 			}
 		}
@@ -201,12 +229,17 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 			if (! joy){
 				vibratoOn[CHANNEL_DEF_HARMONY] = ! vibratoOn[CHANNEL_DEF_HARMONY];
 			}
+			statusCode += STATUS_CODE_VIBRATO;
 		}
 		else if (bB & changed && bStart){
 			arpeggioOn[channel] = ! (arpeggioOn[channel]);
 			if (! joy){
 				arpeggioOn[CHANNEL_DEF_HARMONY] = ! arpeggioOn[CHANNEL_DEF_HARMONY];
 			}
+			else {
+				arpeggioOn[CHANNEL_DEF_NOISE] = ! arpeggioOn[CHANNEL_DEF_NOISE];
+			}
+			statusCode += STATUS_CODE_ARP;
 		}
 		else if (bC & changed && bStart){
 			//harmony for player 1
@@ -217,36 +250,50 @@ void Instrument_joyEvent(u16 joy, u16 changed, u16 state){
 				if (! harmonyOn){
 					Instrument_stopNote(CHANNEL_DEF_HARMONY);
 				}
-				else if (envelope[channel]){
+				else if (envelope[channel] != PSG_ENVELOPE_MIN){
 					envelope[CHANNEL_DEF_HARMONY] = ENV_DEFAULT;
 				}
 			}
 			//noise for player 2
+			else {
+				// noiseOn = ! noiseOn;
+				changeNoiseMode();
+			}
+
+			//harmony status code is used for both harmony and noise
+			statusCode += STATUS_CODE_HARMONY;
 		}
 		//play
 		//if any button is pressed and right is held, note will play
 		else if (BUTTON_RIGHT & state){
 
-			if (envelope[channel] && portamentoOn[channel]){
+			if (envelope[channel] != PSG_ENVELOPE_MIN && portamentoOn[channel]){
 				restartPortamento(channel);
 			}
 
-			envelope[channel] = ENV_DEFAULT;
 			// setCPI(channel, scale[channel][Instrument_buttonsToScalePitch(bA, bB, bC)], pitchMod);
 			Instrument_setPitch(joy, Instrument_buttonsToScalePitch(bA, bB, bC), pitchMod);
 
-			if (channel == CHANNEL_DEF_JOY0 && harmonyOn){
+			if (!joy && harmonyOn){
 				envelope[CHANNEL_DEF_HARMONY] = ENV_DEFAULT;
+				envelope[channel] = ENV_DEFAULT;
+			}
+			else if (joy && noiseOn){
+				envelope[CHANNEL_DEF_NOISE] = ENV_DEFAULT;
+			}
+			else {
+				envelope[channel] = ENV_DEFAULT;
 			}
 
 			playing[joy] = 1;
 		}
 		else if ((BUTTON_LEFT & state) || !sustainOn[channel]){
 			Instrument_stopNote(channel);
+			Instrument_stopNote(CHANNEL_DEF_NOISE);
 			Instrument_stopNote(CHANNEL_DEF_HARMONY);
 		}
 
-		HUD_updateStatusView(joy, bA, bB, bC, bStart);
+		HUD_updateStatusView(joy, bA, bB, bC, bStart, statusCode);
 	}
 	// else if (state) HUD_updateStatusView(joy, bA, bB, bC, bStart);
 }
@@ -265,14 +312,15 @@ void Instrument_playNote(u8 channel, u8 envelope){
 		freq -= portamentoY[channel];
 	}
 	PSG_setEnvelope(channel, envelope);
-	PSG_setFrequency(channel, freq);
-
+	if (channel != CHANNEL_DEF_NOISE){
+		PSG_setFrequency(channel, freq);
+	}
 }
 
 void Instrument_stopNote(u8 channel){
 	vu8 *pb;
 
-	envelope[channel] = 0;
+	envelope[channel] = PSG_ENVELOPE_MIN;
 	PSG_setEnvelope(channel, PSG_ENVELOPE_MIN);
 
 	if (channel <= 1){
@@ -305,6 +353,9 @@ void Instrument_setPitch(u8 joy, u8 scalePitch, u8 pitchMod){
 		// char text[5];
 		// intToStr(octave * OCT, text, 4);
 		// VDP_drawText(text, 10, 26);
+	}
+	else if (channel == CHANNEL_DEF_JOY1){
+		setCPI(CHANNEL_DEF_NOISE, scale[channel][scalePitch], pitchMod);
 	}
 }
 
@@ -423,6 +474,21 @@ static void updatePortamento(u8 channel){
 
 		// intToStr(delta, text, 4);
 		// VDP_drawText(text, 10, 27);
+	}
+}
+
+static void changeNoiseMode(){
+	//there are actually (MAX_NOISE_MODES + 1) noise modes, if you count noise being off
+	if (noiseOn + 1 > MAX_NOISE_MODES){
+		noiseOn = 0;
+	}
+	else{
+		noiseOn++;
+	}
+
+	if (noiseOn){
+		PSG_setNoise(noiseModes[noiseOn-1][0], noiseModes[noiseOn-1][1]);
+		// PSG_setNoise(0, 3);
 	}
 }
 
