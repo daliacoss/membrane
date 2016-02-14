@@ -1,22 +1,18 @@
 Membrane
-=======
+========
 
 Membrane is a musical instrument for the Sega Genesis that supports up to two players.
 
-Run
------------
-
-Load Membrane.bin using your favourite Genesis emulator or flash cartridge. If you acquired Membrane through a source distribution, you will need to build Membrane.bin yourself using the below instructions.
-
-See manual.pdf for help on playing the game itself.
+See manual.pdf for help on playing the game.
 
 Build (Windows only)
-------------
+--------------------
+
+This section is for those who wish to build Membrane from source.
 
 **Dependencies**  
 sgdk: https://code.google.com/p/sgdk/wiki/Download?tm=2  
-sgmake: https://github.com/deckman/sgmake
 
-1. Compile and install SGDK using the instructions on the following page (ignore the step about "compiling your own project"): https://github.com/Stephane-D/SGDK/wiki/Setup-SGDK-basic
-2. Build and install sgmake using the instructions in sgmake's README file
-3. Run sgmake from this project to create out/Membrane.bin
+1. Compile and install SGDK using the instructions on the following page: https://github.com/Stephane-D/SGDK/wiki/Setup-SGDK-basic
+2. From the Membrane project directory, run the following command: `%GDK_WIN%\bin\make -f %GDK_WIN%\makefile.gen`
+3. Load out/rom.bin into your favourite emulator or cartridge.
